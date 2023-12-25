@@ -5,7 +5,7 @@ import cvzone
 import math
 from sort import *
 
-cap = cv2.VideoCapture("../Videos/cars.mp4")
+cap = cv2.VideoCapture("../Videos/people.mp4")
 model = YOLO('../Yolo-Weights/yolov8n.pt')
 
 classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
@@ -22,14 +22,16 @@ classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "trai
 
 mask = cv2.imread("mask.png")
 tracker = Sort(max_age=20, min_hits=3, iou_threshold=0.3)
-limits = [400, 297, 673, 297]
-totalCount = []
+limitUp = [103, 161, 296, 161]
+limitDown = [527, 489, 735, 489]
+totalCountUp = []
+totalCountDown = []
 
 while True:
     success, img = cap.read()
     imgRegion = cv2.bitwise_and(img, mask)
     imgGraphics = cv2.imread("graphics.png", cv2.IMREAD_UNCHANGED)
-    cvzone.overlayPNG(img, imgGraphics, pos=[0, 0])
+    cvzone.overlayPNG(img, imgGraphics, pos=[730, 260])
     results = model(imgRegion, stream=True)
     detections = np.empty((0, 5))
 
@@ -48,14 +50,15 @@ while True:
             # Classification
             cls = int(box.cls[0])
             currentClass = classNames[cls]
-            if currentClass == "car" and conf > 0.3 or currentClass == "bicycle" or currentClass == "motorbike" or currentClass == "bus" or currentClass == "truck":
+            if currentClass == "person" and conf > 0.3:
                 # cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 3)
                 # cvzone.putTextRect(img, f'{currentClass} {conf}', (max(0, x1), max(35, y1)), scale=1, thickness=1)
                 currentArray = np.array([x1, y1, x2, y2, conf])
                 detections = np.vstack((detections, currentArray))
 
     trackerResults = tracker.update(detections)
-    cv2.line(img, (limits[0], limits[1]), (limits[2], limits[3]), (0, 0, 255), 5)
+    cv2.line(img, (limitUp[0], limitUp[1]), (limitUp[2], limitUp[3]), (0, 0, 255), 5)
+    cv2.line(img, (limitDown[0], limitDown[1]), (limitDown[2], limitDown[3]), (0, 0, 255), 5)
 
     for result in trackerResults:
         x1, y1, x2, y2, Id = result
@@ -68,13 +71,20 @@ while True:
         cx, cy = x1 + w // 2, y1 + h // 2
         cv2.circle(img, (cx, cy), 5, (255, 0, 255), cv2.FILLED)
 
-        if limits[0] < cx < limits[2] and limits[1]-15 < cy < limits[3]+15:
-            if totalCount.count(Id) == 0:
-                totalCount.append(Id)
-                cv2.line(img, (limits[0], limits[1]), (limits[2], limits[3]), (0, 255, 0), 5)
+        if limitUp[0] < cx < limitUp[2] and limitUp[1]-15 < cy < limitUp[3]+15:
+            if totalCountUp.count(Id) == 0:
+                totalCountUp.append(Id)
+                cv2.line(img, (limitUp[0], limitUp[1]), (limitUp[2], limitUp[3]), (0, 255, 0), 5)
+
+        if limitDown[0] < cx < limitDown[2] and limitDown[1]-15 < cy < limitDown[3]+15:
+            if totalCountDown.count(Id) == 0:
+                totalCountDown.append(Id)
+                cv2.line(img, (limitDown[0], limitDown[1]), (limitDown[2], limitDown[3]), (0, 255, 0), 5)
 
     # cvzone.putTextRect(img, f'Count: {len(totalCount)}', (50, 50))
-    cv2.putText(img, str(len(totalCount)), (255, 100), cv2.FONT_HERSHEY_PLAIN, 5, (50, 50, 255), 8)
+    cv2.putText(img, str(len(totalCountUp)), (929, 345), cv2.FONT_HERSHEY_PLAIN, 5, (139, 195, 75), 7)
+    cv2.putText(img, str(len(totalCountDown)), (1191, 345), cv2.FONT_HERSHEY_PLAIN, 5, (50, 50, 230), 7)
+
     cv2.imshow("Image", img)
     # cv2.imshow("ImageRegion", imgRegion)
     cv2.waitKey(1)
